@@ -2,8 +2,6 @@
 ; This program replaces all spaces (expect leading ones) with numbers ranging form 0 to 9 e.g.:
 ; "a b c" -> "a0b1c"
 
-; 12 M-	Parašykite programą, kuri įvestoje eilutėje esančius skaitmenis užrašo žodžiais. Pvz.: įvedus b23a turi atspausdinti bdutrysa
-
 .model small
 .stack 100h
 .data
