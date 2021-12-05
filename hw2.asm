@@ -14,9 +14,9 @@ BLOCK_SIZE equ 16
 	msg_help db "This program creates an md2 hash of a specified file", 10, 13, "/i ARG specifies the input file, where ARG is the path to the input file", 10, 13, "/o ARG specifies the output file in which the MD2 hash will be saved, where ARG is the path to the output file$"
 	msg_invalid_opt db "Invalid option(s)!$"
 	msg_fail_open db "Failed to open the file!$"
-	msg_no_arg db "Each file option has to have a path specified"
+	msg_no_arg db "Each file option has to have a path specified$"
 	msg_too_many_opts db "There must exactly be one option suplied for input and output$"
-	msg_a_bug db "A bug in the proram was encoutered, quiting$"
+	msg_a_bug db "A bug in the program was encoutered, quiting$"
 
 	input dw 0000h
 	output dw 0000h
