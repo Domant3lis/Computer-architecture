@@ -10,6 +10,7 @@
 
 	result_msg db "The result is: "
 	buffer db 255, 0, 253 dup (?)
+	buffer_size db 0
 
 .code
 START:
@@ -34,6 +35,7 @@ START:
 
 	; sets up loop counter
 	mov cl, [buffer + 1]
+	mov [buffer_size], cl
 	mov si, offset [buffer + 1]
 	mov bl, '0'
 
@@ -78,8 +80,12 @@ PROCESS:
 
 END_OF_PROGRAM:
 	; prints the result
-	mov ah, 09h
+	mov ah, 40h
+	mov bx, 1
+	xor cx, cx
+	mov cl, [buffer_size] 
 	mov dx, offset result_msg
+	add dx, 15
 	int 21h
 
 	; exits the program
