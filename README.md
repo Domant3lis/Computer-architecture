@@ -10,7 +10,7 @@ It only disassembles COM files
 #### POP
 - [ ] 1st variant
 - [x] 2nd variant
-- [ ] 3rd variant
+- [x] 3rd variant
  
 
 #### AND
