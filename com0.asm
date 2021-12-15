@@ -49,7 +49,7 @@ START:
 	POP dx
 	POP cx
 	POP bx
-	POP ax
+	POP ss
 
 	mov ax, 4C00h
 	int 21h

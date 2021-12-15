@@ -1,14 +1,3 @@
-; TODO:
-; 
-; POP
-; AND
-; LEA
-; LDS
-; DEC
-; LOOP
-; LOOPE
-; LOOPNE
-
 .model large
 .stack 100h
 
@@ -71,6 +60,11 @@ CAPACITY equ 10h
 	strreg_bx db "BX", 0
 	strreg_cx db "CX", 0
 	strreg_dx db "DX", 0
+
+	strsreg_es db "ES", 0
+	strsreg_cs db "CS", 0
+	strsreg_Ss db "SS", 0
+	strsreg_ds db "DS", 0
 
 	; Opcode bytes
 	; 1. registras / atmintis -> stekas
@@ -255,15 +249,12 @@ DISASSEMBLE:
 	call STR_ADD
 
 	mov al, [si]
-	call SUB_REG
-	cmp ax, 1
+	call STR_REG
+	cmp al, 1
 	jb @@NOT_OP_PUSH2
 
-	; lea dx, strop_unreg
 	sub di, 5
 	sub bytes_written, 5
-	; call STR_ADD
-	jmp @@END
 
 @@NOT_OP_PUSH2:
 ; --- POP2
@@ -276,17 +267,28 @@ DISASSEMBLE:
 	call STR_ADD
 
 	mov al, [si]
-	call SUB_REG
-	cmp ax, 1
+	call STR_REG
+	cmp al, 1
 	jb @@NOT_OP_POP2
 
-	; lea dx, strop_unreg
 	sub di, 5
 	sub bytes_written, 5
-	; call STR_ADD
-	jmp @@END
 @@NOT_OP_POP2:
-; 
+; --- POP3
+	mov al, [si]
+	and al, 11100111b
+	cmp al, [op_pop3]
+	jne @@NOT_OP_POP3
+
+	lea dx, strop_pop
+	call STR_ADD
+
+	mov al, [si]
+	shr al, 3
+
+	mov al, [si]
+	call STR_SREG
+@@NOT_OP_POP3:
 @@END:
 	; End line
 	mov byte ptr [di], 13
@@ -457,41 +459,76 @@ PRINT_OUTPUT:
 	ret
 
 ; OPCODES
-SUB_REG:
+STR_SREG:
+	and al, 00000011b
+	cmp al, 00000000b
+	jne @@STR_SREG_NOT_ES
+
+	lea dx, strsreg_es
+	call STR_ADD
+	ret
+
+@@STR_SREG_NOT_ES:
+	cmp al, 00000001b
+	jne @@STR_SREG_NOT_CS
+
+	lea dx, strsreg_cs
+	call STR_ADD
+	ret
+
+@@STR_SREG_NOT_CS:
+	cmp al, 00000010b
+	jne @@STR_SREG_NOT_SS
+
+	lea dx, strsreg_ss
+	call STR_ADD
+	ret
+@@STR_SREG_NOT_SS:
+	lea dx, strsreg_ds
+	call STR_ADD
+	ret
+	
+; 00 – ES
+; 01 – CS
+; 10 – SS
+; 11 – DS
+
+STR_REG:
 	and al, 00000111b
 	cmp al, reg_ax
-	jne @@SUB_REG_NOT_AX
+	jne @@STR_REG_NOT_AX
 
 	lea dx, strreg_ax
 	call STR_ADD
+	xor al, al
 	ret
 
-@@SUB_REG_NOT_AX:
+@@STR_REG_NOT_AX:
 	cmp al, reg_bx
-	jne @@SUB_REG_NOT_BX
+	jne @@STR_REG_NOT_BX
 
 	lea dx, strreg_bx
 	call STR_ADD
-	xor ax, ax
+	xor al, al
 	ret
-@@SUB_REG_NOT_BX:
+@@STR_REG_NOT_BX:
 	cmp al, reg_cx
-	jne @@SUB_REG_NOT_CX
+	jne @@STR_REG_NOT_CX
 
 	lea dx, strreg_cx
 	call STR_ADD
-	xor ax, ax
+	xor al, al
 	ret
-@@SUB_REG_NOT_CX:
+@@STR_REG_NOT_CX:
 	cmp al, reg_dx
-	jne @@SUB_REG_NOT_DX
+	jne @@STR_REG_NOT_DX
 
 	lea dx, strreg_dx
 	call STR_ADD
-	xor ax, ax
+	xor al, al
 	ret
-@@SUB_REG_NOT_DX:
-	or ax, 00000001b
+@@STR_REG_NOT_DX:
+	or al, 00000001b
 
 	ret
 
