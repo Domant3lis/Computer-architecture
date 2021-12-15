@@ -3,6 +3,9 @@
 org 0100h
 START:
 	PUSH ax
+	PUSH bx
+	PUSH cx
+	PUSH dx
 	
 	mov ax, 63
 	mov bx, 31
@@ -43,6 +46,9 @@ START:
 	; si = 0102
 	; ds = 0304
 
+	POP dx
+	POP cx
+	POP bx
 	POP ax
 
 	mov ax, 4C00h
