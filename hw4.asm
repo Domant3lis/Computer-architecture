@@ -50,26 +50,27 @@ CAPACITY equ 10h
 	pos dw 0100h
 
 	; Opcode strings
-	strop_pop db    "pop      "
-	strop_and db    "and      "
-	strop_lea db    "lea      "
-	strop_lds db    "lds      "
-	strop_dec db    "dec      "
-	strop_loop db   "loop     "
-	strop_loope db  "loope    "
-	strop_loopne db "loopne   "
-	strop_unreg db  "unrecognized opcode"
+	strop_push db   "push ", 0
+	strop_pop db    "pop ", 0
+	strop_and db    "and ", 0
+	strop_lea db    "lea ", 0
+	strop_lds db    "lds ", 0
+	strop_dec db    "dec ", 0
+	strop_loop db   "loop ", 0
+	strop_loope db  "loope ", 0
+	strop_loopne db "loopne ", 0
+	strop_unreg db  "Unrecognized opcode", 0
 
 	; Registers
-	reg_ax db 00000100b
-	reg_bx db 00000100b
-	reg_cx db 00000100b
-	reg_dx db 00000100b
+	reg_ax db 00000000b
+	reg_bx db 00000011b
+	reg_cx db 00000001b
+	reg_dx db 00000010b
 
-	strreg_ax db "AX"
-	strreg_cx db "BX"
-	strreg_Bx db "CX"
-	strreg_dx db "DX"
+	strreg_ax db "AX", 0
+	strreg_bx db "BX", 0
+	strreg_cx db "CX", 0
+	strreg_dx db "DX", 0
 
 	; Opcode bytes
 	; 1. registras / atmintis -> stekas
@@ -244,14 +245,48 @@ DISASSEMBLE:
 	inc di
 	inc [bytes_written]
 
+; --- PUSH2
 	mov al, [si]
 	and al, 11111000b
 	cmp al, [op_push2]
-	jne @@NOT_OP_PUSH1
-	call SUB_OP_PUSH1
-@@NOT_OP_PUSH1:
+	jne @@NOT_OP_PUSH2
 
-	
+	lea dx, strop_push
+	call STR_ADD
+
+	mov al, [si]
+	call SUB_REG
+	cmp ax, 1
+	jb @@NOT_OP_PUSH2
+
+	; lea dx, strop_unreg
+	sub di, 5
+	sub bytes_written, 5
+	; call STR_ADD
+	jmp @@END
+
+@@NOT_OP_PUSH2:
+; --- POP2
+	mov al, [si]
+	and al, 11111000b
+	cmp al, [op_pop2]
+	jne @@NOT_OP_POP2
+
+	lea dx, strop_pop
+	call STR_ADD
+
+	mov al, [si]
+	call SUB_REG
+	cmp ax, 1
+	jb @@NOT_OP_POP2
+
+	; lea dx, strop_unreg
+	sub di, 5
+	sub bytes_written, 5
+	; call STR_ADD
+	jmp @@END
+@@NOT_OP_POP2:
+; 
 @@END:
 	; End line
 	mov byte ptr [di], 13
@@ -422,15 +457,65 @@ PRINT_OUTPUT:
 	ret
 
 ; OPCODES
-SUB_OP_PUSH1:
+SUB_REG:
+	and al, 00000111b
+	cmp al, reg_ax
+	jne @@SUB_REG_NOT_AX
 
-	mov [di], "#"
-	inc di
-	inc bytes_written
+	lea dx, strreg_ax
+	call STR_ADD
+	ret
+
+@@SUB_REG_NOT_AX:
+	cmp al, reg_bx
+	jne @@SUB_REG_NOT_BX
+
+	lea dx, strreg_bx
+	call STR_ADD
+	xor ax, ax
+	ret
+@@SUB_REG_NOT_BX:
+	cmp al, reg_cx
+	jne @@SUB_REG_NOT_CX
+
+	lea dx, strreg_cx
+	call STR_ADD
+	xor ax, ax
+	ret
+@@SUB_REG_NOT_CX:
+	cmp al, reg_dx
+	jne @@SUB_REG_NOT_DX
+
+	lea dx, strreg_dx
+	call STR_ADD
+	xor ax, ax
+	ret
+@@SUB_REG_NOT_DX:
+	or ax, 00000001b
 
 	ret
 
 SUB_OP_PUSH2:
+	ret
+
+; --- All string subroutines here ---
+STR_ADD:
+	push si
+
+	mov si, dx
+@@STR_LOOP:
+
+	mov dx, [si]
+	mov [di], dx
+
+	inc di
+	inc si
+	inc bytes_written
+
+	cmp byte ptr [si], 0
+	jne @@STR_LOOP
+	
+	pop si
 	ret
 
 end START
