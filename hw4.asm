@@ -16,7 +16,7 @@ CAPACITY equ 10h
 
 .data
 	; Input and output buffers
-	input dw (CAPACITY) dup (0)
+	input db (CAPACITY) dup (0)
     output db (CAPACITY) * 100 dup (0)
 
 	; File name buffers
@@ -39,35 +39,43 @@ CAPACITY equ 10h
 	output_hnd dw 0000h
 
     ; Amount of bytes read
-    bytes_read dw (CAPACITY)
+    bytes_read dw ?
+    bytes_scanned dw (CAPACITY)
 	bytes_written dw 0
 
 	; Absolute amount of bytes read
-	total_bytes dw 0000h
+	; total_bytes dw 0000h
 
-	; 
-	prog_pos dw 0100h
-
-	; is used as a boolean value to indicate whenever
-	; the block read is the last
-	is_last_block db 0
+	; Instruction position
+	pos dw 0100h
 
 	; Opcode strings
-	msgop_pop db    "pop      "
-	msgop_and db    "and      "
-	msgop_lea db    "lea      "
-	msgop_lds db    "lds      "
-	msgop_dec db    "dec      "
-	msgop_loop db   "loop     "
-	msgop_loope db  "loope    "
-	msgop_loopne db "loopne   "
-	msgop_unreg db  "unrecognized opcode"
+	strop_pop db    "pop      "
+	strop_and db    "and      "
+	strop_lea db    "lea      "
+	strop_lds db    "lds      "
+	strop_dec db    "dec      "
+	strop_loop db   "loop     "
+	strop_loope db  "loope    "
+	strop_loopne db "loopne   "
+	strop_unreg db  "unrecognized opcode"
+
+	; Registers
+	reg_ax db 00000100b
+	reg_bx db 00000100b
+	reg_cx db 00000100b
+	reg_dx db 00000100b
+
+	strreg_ax db "AX"
+	strreg_cx db "BX"
+	strreg_Bx db "CX"
+	strreg_dx db "DX"
 
 	; Opcode bytes
 	; 1. registras / atmintis -> stekas
 	; 1111 1111 mod 110 r/m [poslinkis]
 
-	; 2. registras -> stekas
+; 2. registras -> stekas
 	; 0101 0reg
 	op_push2 db 01010000b
 
@@ -223,25 +231,36 @@ FILE_OPEN:
 	mov [output_hnd], 1
 @@NOT_FAIL_OUTPUT:
 
+	; mov cx, 30
 DISASSEMBLE:
-
+	
 	call GET_BYTE
+
+	call COLUMN
+	inc [pos]
+
 	call BYTE_TO_STR
+	mov byte ptr [di], " "
+	inc di
+	inc [bytes_written]
 
-	; inc di
-	; inc bytes_written
-	; mov di, " "
+	mov al, [si]
+	and al, 11111000b
+	cmp al, [op_push2]
+	jne @@NOT_OP_PUSH1
+	call SUB_OP_PUSH1
+@@NOT_OP_PUSH1:
 
-	cmp [is_last_block], 1
-	jne @@LOOOOOP
+	
+@@END:
+	; End line
+	mov byte ptr [di], 13
+	inc bytes_written
+	inc di
 
-	; mov ah, 02h
-	; mov dl, "#"
-	; int 21h
-
-@@LOOOOOP:
-
-	; call PRINT_OUTPUT
+	mov byte ptr [di], 10
+	inc bytes_written
+	inc di
 
 	jmp DISASSEMBLE
 
@@ -266,6 +285,49 @@ PRINT_FAIL_READ:
 	mov ah, 09h
 	int 21h
 	jmp EXIT
+COLUMN:
+; Save column information to di
+; -- BH --
+	mov bx, [pos]
+	xor ax, ax
+	mov al, bh
+	mov cl, 16
+	div cl 
+
+	call TO_HEX
+	mov [di], al
+
+	mov al, ah
+	call TO_HEX
+	inc di
+	mov [di], al
+
+; -- BL --
+	mov bx, [pos]
+	xor ax, ax
+	mov al, bl
+	mov cl, 16
+	div cl 
+
+	call TO_HEX
+	inc di
+	mov [di], al
+
+	mov al, ah
+	call TO_HEX
+	inc di
+	mov [di], al
+	inc di
+
+	mov [di], " "
+	inc di
+
+	mov [di], " "
+	inc di
+
+	add bytes_written, 6
+
+	ret
 
 ; Takes a byte from [si] and
 ; saves hex representation to a string in di  
@@ -280,11 +342,12 @@ BYTE_TO_STR:
 	call TO_HEX
 	mov [di], al
 
-	inc di
 	mov al, ah
 	call TO_HEX
+
+	inc di
 	mov [di], al
-	; inc di
+	inc di
 
 	add [bytes_written], 2
 
@@ -300,52 +363,54 @@ TO_HEX:
 	ret
 
 GET_BYTE:
-	cmp [bytes_read], (CAPACITY)
-	jb @@NOT_READ
+	mov dx, [bytes_read]
 
-	mov ah, 02h
-	mov dl, "?"
-	int 21h
+	; mov dx, [bytes_scanned]
+	; cmp [bytes_read], dx
+	mov dx, [bytes_scanned]
+	inc dx
+	cmp dx, [bytes_read]
+	; cmp [bytes_scanned], 4
+	jb @@INC_SI
 
-	cmp [is_last_block], 1
-	jb @@NO_EXIT
-	call EXIT
-
-@@NO_EXIT:
 	call NEW_BLOCK
+	jmp @@NEW_BLOCK
 
-	cmp [bytes_read], (CAPACITY)
-	je @@NOT_LAST_BLOCK
-	inc [is_last_block]
-	
-	jmp @@NOT_LAST_BLOCK
-
-@@NOT_READ:
+@@INC_SI:
 	inc si
+	inc [bytes_scanned]
 
-@@NOT_LAST_BLOCK:
-	inc [bytes_read]
-
+@@NEW_BLOCK:
 	ret
-; Reads (CAPACITY) number of bytes from a file 
+
+; Reads CAPACITY number of bytes from a file 
 NEW_BLOCK:
 	call PRINT_OUTPUT
-	
-	; Resets si and di
-	lea si, input
 
 	; Reading from file
 	mov bx, [input_hnd]
 	mov cx, (CAPACITY)
 	lea dx, input
-	mov ax, 3F00h
+	mov ax, 3F00h(CAPACITY)
 	int 21h
 	mov [bytes_read], ax
 
 	jnc @@NO_FAIL
 	call PRINT_FAIL_READ
+
 @@NO_FAIL:
+	test ax, ax
+	jz @@END_OF_FILE
+
+	; Resets si and di
+	lea si, input
+	lea di, output
+	mov [bytes_scanned], 0
+	mov [bytes_written], 0
+
 	ret
+@@END_OF_FILE:
+	call EXIT
 
 PRINT_OUTPUT:
 	mov cx, [bytes_written]
@@ -354,25 +419,15 @@ PRINT_OUTPUT:
 	mov bx, output_hnd
 	int 21h
 
-	lea di, output
-	mov [bytes_written], 0
-
-	mov dl, "#"
-	mov ah, 02h
-	int 21h
-
-	mov dl, 10
-	mov ah, 02h
-	int 21h
-
-	mov dl, 13
-	mov ah, 02h
-	int 21h
-
 	ret
 
 ; OPCODES
 SUB_OP_PUSH1:
+
+	mov [di], "#"
+	inc di
+	inc bytes_written
+
 	ret
 
 SUB_OP_PUSH2:
