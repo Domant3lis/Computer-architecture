@@ -194,7 +194,7 @@ CONVERT:
 	push ax
 
 	; Print column only then 16 bytes have been processed
-	; total_words % 16 == 0
+	; total_words % 16 == 0 
 	cmp ax, 0
 	jne BYTES
 
@@ -363,10 +363,11 @@ READ_FROM_FILE:
 	int 21h
 	mov bytes_read, ax
 
-	cmp [bytes_read], 0
-	jne @@NOT_END_OF_FILE
-	call EXIT
+	; Checks if end of file was reached
+	test ax, ax
+	jz @@END_OF_FILE
 
-@@NOT_END_OF_FILE:
 	ret
+@@END_OF_FILE:
+	call EXIT
 end START
