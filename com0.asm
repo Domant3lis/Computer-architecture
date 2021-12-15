@@ -48,7 +48,7 @@ START:
 
 	POP dx
 	POP cx
-	POP bx
+	POP es:[bx]
 	POP ss
 
 	mov ax, 4C00h

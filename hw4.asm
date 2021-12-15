@@ -39,16 +39,24 @@ CAPACITY equ 10h
 	pos dw 0100h
 
 	; Opcode strings
-	strop_push db   "push ", 0
-	strop_pop db    "pop ", 0
-	strop_and db    "and ", 0
-	strop_lea db    "lea ", 0
-	strop_lds db    "lds ", 0
-	strop_dec db    "dec ", 0
-	strop_loop db   "loop ", 0
-	strop_loope db  "loope ", 0
-	strop_loopne db "loopne ", 0
-	strop_unreg db  "Unrecognized opcode", 0
+	strop_push db   " push ", 0
+	strop_pop db    " pop ", 0
+	strop_and db    " and ", 0
+	strop_lea db    " lea ", 0
+	strop_lds db    " lds ", 0
+	strop_dec db    " dec ", 0
+	strop_loop db   " loop ", 0
+	strop_loope db  " loope ", 0
+	strop_loopne db " loopne ", 0
+	strop_unreg db  " Unrecognized opcode", 0
+
+	; 
+	d db 0
+	w db 0
+	sreg db 0
+	reg db 0
+	rm db 0
+	mod db 0
 
 	; Registers
 	reg_ax db 00000000b
@@ -66,22 +74,14 @@ CAPACITY equ 10h
 	strsreg_Ss db "SS", 0
 	strsreg_ds db "DS", 0
 
-	; Opcode bytes
-	; 1. registras / atmintis -> stekas
-	; 1111 1111 mod 110 r/m [poslinkis]
-
 ; 2. registras -> stekas
 	; 0101 0reg
 	op_push2 db 01010000b
 
-	; 3. segmento registras -> stekas
-	; 000 sreg 110
-	; op_push3 db 000 00 110b
-
 	; 1. stekas -> registras / atmintis
 	; 1000 1111 mod 110 r/m [poslinkis] 
-	op_pop1 db 10001111b
-
+	op_pop1 dw 1000111100110000b
+	
 	; 2. stekas -> registras
 	; 01011 reg
 	op_pop2 db 01011000b
@@ -235,46 +235,11 @@ DISASSEMBLE:
 	inc [pos]
 
 	call BYTE_TO_STR
-	mov byte ptr [di], " "
-	inc di
-	inc [bytes_written]
 
-; --- PUSH2
-	mov al, [si]
-	and al, 11111000b
-	cmp al, [op_push2]
-	jne @@NOT_OP_PUSH2
+; --- PREFIX BYTE ----
 
-	lea dx, strop_push
-	call STR_ADD
 
-	mov al, [si]
-	call STR_REG
-	cmp al, 1
-	jb @@NOT_OP_PUSH2
-
-	sub di, 5
-	sub bytes_written, 5
-
-@@NOT_OP_PUSH2:
-; --- POP2
-	mov al, [si]
-	and al, 11111000b
-	cmp al, [op_pop2]
-	jne @@NOT_OP_POP2
-
-	lea dx, strop_pop
-	call STR_ADD
-
-	mov al, [si]
-	call STR_REG
-	cmp al, 1
-	jb @@NOT_OP_POP2
-
-	sub di, 5
-	sub bytes_written, 5
-@@NOT_OP_POP2:
-; --- POP3
+; --- POP3 ---
 	mov al, [si]
 	and al, 11100111b
 	cmp al, [op_pop3]
@@ -285,10 +250,53 @@ DISASSEMBLE:
 
 	mov al, [si]
 	shr al, 3
+	call STR_SREG
+	jmp @@END
+@@NOT_OP_POP3:
+; --- POP1 ---
+
+; --- PUSH2 ---
+	mov al, [si]
+	and al, 11111000b
+	cmp al, [op_push2]
+	jne @@NOT_OP_PUSH2
+
+	lea dx, strop_push
+	call STR_ADD
 
 	mov al, [si]
-	call STR_SREG
-@@NOT_OP_POP3:
+	call STR_REG
+	jmp @@OP_END
+	; cmp al, 1
+	; jb @@NOT_OP_PUSH2
+
+	; sub di, 5
+	; sub bytes_written, 5
+
+@@NOT_OP_PUSH2:
+; --- POP2 ---
+	mov al, [si]
+	and al, 11111000b
+	cmp al, [op_pop2]
+	jne @@NOT_OP_POP2
+
+	lea dx, strop_pop
+	call STR_ADD
+
+	mov al, [si]
+	call STR_REG
+	jmp @@OP_END
+
+@@OP_END:
+	cmp al, 1
+	jb @@END
+
+	sub di, 5
+	sub bytes_written, 5
+@@NOT_OP_POP2:
+	lea dx, strop_unreg
+	call STR_ADD
+
 @@END:
 	; End line
 	mov byte ptr [di], 13
