@@ -194,6 +194,7 @@ CONVERT:
 	push ax
 
 	; Print column only then 16 bytes have been processed
+	; total_words % 16 == 0
 	cmp ax, 0
 	jne BYTES
 
@@ -238,23 +239,11 @@ BYTES:
 	inc si
 	inc [total_words]
 
-; Prevent from getting stuck
-; then file size matches CAPACITY 
-	mov ax, offset input_text
-	mov bx, [bytes_read]
-	add ax, bx
-	cmp	ax, si
-	jb EXIT
-
 	loop CONVERT
 @@AFTER_LOOP:
 	; Prints the whole CAPACITY sized block
 	call PRINT_OUTPUT
-
-    ; Checks if end of file was reached
-	mov ax, bytes_read
-    cmp ax, (CAPACITY)
-    je FILE_READ
+    jmp FILE_READ
 
 EXIT:
 ; Closes the file handles
@@ -374,5 +363,10 @@ READ_FROM_FILE:
 	int 21h
 	mov bytes_read, ax
 
+	cmp [bytes_read], 0
+	jne @@NOT_END_OF_FILE
+	call EXIT
+
+@@NOT_END_OF_FILE:
 	ret
 end START
