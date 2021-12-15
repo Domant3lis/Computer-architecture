@@ -7,4 +7,22 @@ There is a handy little script `run.bat` which builds and runs a specified progr
 It only disassembles COM files
 
 ### List of opcodes implemented:
-* None
+#### POP
+- [ ] 1st variant
+- [x] 2nd variant
+- [ ] 3rd variant
+ 
+
+#### AND
+
+#### LEA
+
+#### LDS
+
+#### DEC
+
+#### LOOP
+
+#### LOOPE
+
+#### LOOPNE
