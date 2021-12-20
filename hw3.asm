@@ -2,7 +2,7 @@
 .stack 100h
 
 ; Must not exceed 325Fh
-CAPACITY equ 16 * 2
+CAPACITY equ 512
 ; CAPACITY equ 0FEh
 ; CAPACITY equ 325Fh
 
@@ -165,7 +165,7 @@ FILE_OPEN:
     mov [input], ax
 	jc PRINT_FAIL_OPEN
 
-	; creates the output file
+	; creates the output file handle
 	xor cx, cx
 	mov ax, 3C02h
 	lea dx, output_file_arg
@@ -173,7 +173,7 @@ FILE_OPEN:
 	mov output, ax	
 	jnc FILE_READ
 
-	mov [is_out_file], 0
+	mov output, 1
 
 FILE_READ:
 	mov [bytes_written], 0
@@ -301,23 +301,10 @@ COLUMN:
 	ret
 
 PRINT_OUTPUT:
+	mov bx, output
 	mov cx, [bytes_written]
 	lea dx, output_hex
 	mov ah, 40h
-
-	cmp [is_out_file], 0
-	je @@STDOUT
-
-	; Sets to save output to a file
-	mov bx, output
-
-	jmp @@INTERRUPT
-		
-@@STDOUT:
-	; Sets to prints the results to stdout
-	mov bx, 1
-
-@@INTERRUPT:
 	int 21h
 	ret
 

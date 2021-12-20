@@ -48,8 +48,14 @@ START:
 
 	POP dx
 	POP cx
-	POP es:[bx]
-	POP ss
+	POP bx
+
+	POP ds:[bx + 1111h]
+	
+	POP ss:bx
+
+	POP ds
+	POP es
 
 	mov ax, 4C00h
 	int 21h

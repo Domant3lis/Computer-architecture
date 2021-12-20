@@ -1,7 +1,7 @@
 .model large
 .stack 100h
 
-CAPACITY equ 10h
+CAPACITY equ 20h
 
 .data
 	; Input and output buffers
@@ -36,7 +36,7 @@ CAPACITY equ 10h
 	; total_bytes dw 0000h
 
 	; Instruction position
-	pos dw 0100h
+	pos dw 00ffh
 
 	; Opcode strings
 	strop_push db   " push ", 0
@@ -50,13 +50,13 @@ CAPACITY equ 10h
 	strop_loopne db " loopne ", 0
 	strop_unreg db  " Unrecognized opcode", 0
 
-	; 
+	; Stuff
 	d db 0
 	w db 0
 	sreg db 0
 	reg db 0
 	rm db 0
-	mod db 0
+	mmod db 0
 
 	; Registers
 	reg_ax db 00000000b
@@ -232,12 +232,21 @@ DISASSEMBLE:
 	call GET_BYTE
 
 	call COLUMN
-	inc [pos]
 
 	call BYTE_TO_STR
 
 ; --- PREFIX BYTE ----
+	mov al, [si]
+	and al, 11100111b
+	cmp al, 00100110b
+	jne @@NOT_OP_PREFIX
 
+	mov al, [si]
+	and al, 00011000b
+	shr al, 3
+	mov [mmod], al
+
+@@NOT_OP_PREFIX:
 
 ; --- POP3 ---
 	mov al, [si]
@@ -250,11 +259,36 @@ DISASSEMBLE:
 
 	mov al, [si]
 	shr al, 3
+	mov [sreg], al
 	call STR_SREG
-	jmp @@END
+	jmp OP_END
+
 @@NOT_OP_POP3:
 ; --- POP1 ---
+	mov al, [si]
+	cmp al, 10001111b
+	jne @@NOT_OP_POP1
 
+	call GET_BYTE
+	
+	call BYTE_TO_STR
+
+	lea dx, strop_pop
+	call STR_ADD
+
+	; Gets mod
+	mov al, [si]
+	and al, 11000000b
+	SHR al, 6
+	mov [mmod], al
+	; Gets r/m
+	mov al, [si]
+	and al, 00000111b
+	mov [rm], al
+
+	jmp OP_END
+
+@@NOT_OP_POP1:
 ; --- PUSH2 ---
 	mov al, [si]
 	and al, 11111000b
@@ -265,6 +299,7 @@ DISASSEMBLE:
 	call STR_ADD
 
 	mov al, [si]
+	mov [reg], al
 	call STR_REG
 	jmp @@OP_END
 	; cmp al, 1
@@ -284,20 +319,22 @@ DISASSEMBLE:
 	call STR_ADD
 
 	mov al, [si]
+	mov [reg], al
 	call STR_REG
 	jmp @@OP_END
 
 @@OP_END:
 	cmp al, 1
-	jb @@END
+	jb OP_END
 
 	sub di, 5
 	sub bytes_written, 5
 @@NOT_OP_POP2:
+
 	lea dx, strop_unreg
 	call STR_ADD
 
-@@END:
+OP_END:
 	; End line
 	mov byte ptr [di], 13
 	inc bytes_written
@@ -364,10 +401,10 @@ COLUMN:
 	mov [di], al
 	inc di
 
-	mov [di], " "
+	mov byte ptr [di], " "
 	inc di
 
-	mov [di], " "
+	mov byte ptr [di], " "
 	inc di
 
 	add bytes_written, 6
@@ -426,6 +463,7 @@ GET_BYTE:
 	inc [bytes_scanned]
 
 @@NEW_BLOCK:
+	inc [pos]
 	ret
 
 ; Reads CAPACITY number of bytes from a file 
@@ -468,6 +506,7 @@ PRINT_OUTPUT:
 
 ; OPCODES
 STR_SREG:
+	mov al, [sreg]
 	and al, 00000011b
 	cmp al, 00000000b
 	jne @@STR_SREG_NOT_ES
@@ -495,13 +534,13 @@ STR_SREG:
 	lea dx, strsreg_ds
 	call STR_ADD
 	ret
-	
 ; 00 – ES
 ; 01 – CS
 ; 10 – SS
 ; 11 – DS
 
 STR_REG:
+	mov al, [reg]
 	and al, 00000111b
 	cmp al, reg_ax
 	jne @@STR_REG_NOT_AX
@@ -537,7 +576,6 @@ STR_REG:
 	ret
 @@STR_REG_NOT_DX:
 	or al, 00000001b
-
 	ret
 
 SUB_OP_PUSH2:
