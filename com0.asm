@@ -9,7 +9,16 @@ START:
 	
 	mov ax, 63
 	mov bx, 31
+
+	DEC ax
+	DEC bx
+	DEC byte ptr [si]
+	DEC byte ptr [si + 1234h]
+
 	AND ax, bx
+	AND al, bl
+	AND ax, [bx + 1h]
+	AND ax, [bx + 100h]
 
 	mov ah, 0Ah
 	DEC ah

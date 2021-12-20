@@ -11,6 +11,16 @@ CAPACITY equ 20h
 	; File name buffers
 	input_file_arg db 128 dup (0)
 	output_file_arg db 128 dup (0)
+	
+	; File handles
+	input_hnd dw 0000h
+	output_hnd dw 0000h
+
+	; Amount of bytes read
+    bytes_read dw ?
+    bytes_scanned dw (CAPACITY)
+	bytes_written dw 0
+
 
 	; Command line option buffer
 	cmd_buff db 128 dup(0)
@@ -23,20 +33,10 @@ CAPACITY equ 20h
 	msg_no_arg db "Each file option has to have a path specified$"
 	msg_too_many_opts db "There must exactly be one option supplied for input and output$"
 
-    ; File handles
-	input_hnd dw 0000h
-	output_hnd dw 0000h
-
-    ; Amount of bytes read
-    bytes_read dw ?
-    bytes_scanned dw (CAPACITY)
-	bytes_written dw 0
-
-	; Absolute amount of bytes read
-	; total_bytes dw 0000h
+	str_op_buffer db 32 dup (?)
 
 	; Instruction position
-	pos dw 00ffh
+	pos dw 0100h
 
 	; Opcode strings
 	strop_push db   " push ", 0
@@ -64,6 +64,11 @@ CAPACITY equ 20h
 	reg_cx db 00000001b
 	reg_dx db 00000010b
 
+	str_sign_plus db "+", 0
+	str_sign_lbracket db "[", 0
+	str_sign_rbracket db "]", 0
+
+
 	strreg_ax db "AX", 0
 	strreg_bx db "BX", 0
 	strreg_cx db "CX", 0
@@ -71,24 +76,11 @@ CAPACITY equ 20h
 
 	strsreg_es db "ES", 0
 	strsreg_cs db "CS", 0
-	strsreg_Ss db "SS", 0
+	strsreg_ss db "SS", 0
 	strsreg_ds db "DS", 0
 
-; 2. registras -> stekas
-	; 0101 0reg
-	op_push2 db 01010000b
-
-	; 1. stekas -> registras / atmintis
-	; 1000 1111 mod 110 r/m [poslinkis] 
-	op_pop1 dw 1000111100110000b
-	
-	; 2. stekas -> registras
-	; 01011 reg
-	op_pop2 db 01011000b
-
-	; 3. stekas -> segmento registras
-	; 000 sreg 111
-	op_pop3 db 00000111b
+	str_si db "SI", 0
+	str_di db "DI", 0
 
 .code
 START:
@@ -229,11 +221,8 @@ FILE_OPEN:
 	; mov cx, 30
 DISASSEMBLE:
 	
-	call GET_BYTE
-
 	call COLUMN
-
-	call BYTE_TO_STR
+	call GET_BYTE	
 
 ; --- PREFIX BYTE ----
 	mov al, [si]
@@ -251,7 +240,7 @@ DISASSEMBLE:
 ; --- POP3 ---
 	mov al, [si]
 	and al, 11100111b
-	cmp al, [op_pop3]
+	cmp al, 00000111b
 	jne @@NOT_OP_POP3
 
 	lea dx, strop_pop
@@ -270,11 +259,6 @@ DISASSEMBLE:
 	jne @@NOT_OP_POP1
 
 	call GET_BYTE
-	
-	call BYTE_TO_STR
-
-	lea dx, strop_pop
-	call STR_ADD
 
 	; Gets mod
 	mov al, [si]
@@ -286,13 +270,19 @@ DISASSEMBLE:
 	and al, 00000111b
 	mov [rm], al
 
+	lea dx, strop_pop
+	call STR_ADD
+
+	; lea dx, str_op_buffer
+	; call STR_ADD
+
 	jmp OP_END
 
 @@NOT_OP_POP1:
 ; --- PUSH2 ---
 	mov al, [si]
 	and al, 11111000b
-	cmp al, [op_push2]
+	cmp al, 01010000b
 	jne @@NOT_OP_PUSH2
 
 	lea dx, strop_push
@@ -312,7 +302,7 @@ DISASSEMBLE:
 ; --- POP2 ---
 	mov al, [si]
 	and al, 11111000b
-	cmp al, [op_pop2]
+	cmp al, 01011000b
 	jne @@NOT_OP_POP2
 
 	lea dx, strop_pop
@@ -330,9 +320,53 @@ DISASSEMBLE:
 	sub di, 5
 	sub bytes_written, 5
 @@NOT_OP_POP2:
+; --- DEC1 ---
+	mov al, [si]
+	and al, 11111110b
+	cmp al, 11111110b
+	jne @@NOT_OP_DEC1
 
+	mov al, [si]
+	and al, 00000001b
+	mov w, al
+
+	call GET_BYTE
+
+	mov al, [si]
+	and al, 11000000b
+	mov [mmod], al
+
+	mov al, [si]
+	and al, 00000111b
+	mov [rm], al
+
+	call MOD_RM
+
+	lea dx, strop_dec
+	call STR_ADD
+
+	jmp OP_END
+@@NOT_OP_DEC1:
+
+; --- DEC2 ---
+	mov al, [si]
+	and al, 11111000b
+	cmp al, 01001000b
+	jne @@NOT_OP_DEC2
+
+	lea dx, strop_dec
+	call STR_ADD
+
+	mov al, [si]
+	mov [reg], al
+	call STR_REG
+
+	jmp OP_END
+
+@@NOT_OP_DEC2:
 	lea dx, strop_unreg
 	call STR_ADD
+
 
 OP_END:
 	; End line
@@ -464,6 +498,7 @@ GET_BYTE:
 
 @@NEW_BLOCK:
 	inc [pos]
+	call BYTE_TO_STR
 	ret
 
 ; Reads CAPACITY number of bytes from a file 
@@ -581,7 +616,7 @@ STR_REG:
 SUB_OP_PUSH2:
 	ret
 
-; --- All string subroutines here ---
+; --- String subroutines ---
 STR_ADD:
 	push si
 
@@ -599,6 +634,96 @@ STR_ADD:
 	jne @@STR_LOOP
 	
 	pop si
+	ret
+
+STR_BUF_ADD:
+	push si
+	push di
+
+	mov si, dx
+	lea di, str_op_buffer
+
+	mov di, " "
+	inc di
+
+@@STR_BUF_LOOP:
+
+	mov dx, [si]
+	mov [di], dx
+
+	inc di
+	inc si
+
+	cmp byte ptr [si], 0
+	jne @@STR_BUF_LOOP
+
+	mov [di], 0
+
+	pop di
+	pop si
+	ret
+
+; --- OP CODE SUBROUTINES ---
+; Detects which subroutine to call
+MOD_RM:
+	cmp [mmod], 00b
+	jne @@MOD_NOT00
+	call MOD00
+	ret
+
+@@MOD_NOT00:
+	cmp [mmod], 01b
+	jne @@MOD_NOT01
+	call MOD01_10
+	ret
+
+@@MOD_NOT01:
+	cmp [mmod], 10b
+	jne @@MOD_NOT10
+	call MOD01_10
+	ret
+
+@@MOD_NOT10:
+	call MOD11
+
+	ret
+
+MOD00:
+	lea dx, str_sign_lbracket
+	call STR_BUF_ADD
+
+	cmp [rm], 000b
+	jne @@MOD00_RM_NOT_000
+
+	jmp @@MOD00_END
+
+@@MOD00_RM_NOT_000:
+	cmp [rm], 100b
+	jne @@MOD00_RM_NOT_100
+
+	lea dx, str_si
+	call STR_BUF_ADD
+
+	jmp @@MOD00_END
+
+@@MOD00_RM_NOT_100:
+
+	; mov 
+@@MOD00_END:
+	lea dx, str_sign_rbracket
+	call STR_BUF_ADD
+	ret
+
+MOD01_10:
+	ret
+
+MOD11:
+	cmp [w], 0b
+	jne @@W1
+
+	ret
+@@W1:
+
 	ret
 
 end START
