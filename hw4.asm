@@ -4,9 +4,10 @@
 CAPACITY equ 20h
 
 .data
+	str_test db "?????", 0
 	; Input and output buffers
 	input db (CAPACITY) dup (0)
-    output db (CAPACITY) * 100 dup (0)
+    output db (CAPACITY) * 30 dup (0)
 
 	; File name buffers
 	input_file_arg db 128 dup (0)
@@ -34,6 +35,7 @@ CAPACITY equ 20h
 	msg_too_many_opts db "There must exactly be one option supplied for input and output$"
 
 	str_op_buffer db 32 dup (?)
+	str_op_buffer_offset dw 0
 
 	; Instruction position
 	pos dw 0100h
@@ -70,7 +72,7 @@ CAPACITY equ 20h
 
 
 	strreg_ax db "AX", 0
-	strreg_bx db "BX", 0
+	strreg_bx db "BX", 0	
 	strreg_cx db "CX", 0
 	strreg_dx db "DX", 0
 
@@ -81,6 +83,8 @@ CAPACITY equ 20h
 
 	str_si db "SI", 0
 	str_di db "DI", 0
+	str_bp db "BP", 0
+	str_sp db "SP", 0
 
 .code
 START:
@@ -222,7 +226,7 @@ FILE_OPEN:
 DISASSEMBLE:
 	
 	call COLUMN
-	call GET_BYTE	
+	call GET_BYTE
 
 ; --- PREFIX BYTE ----
 	mov al, [si]
@@ -244,12 +248,13 @@ DISASSEMBLE:
 	jne @@NOT_OP_POP3
 
 	lea dx, strop_pop
-	call STR_ADD
+	call STR_BUF_ADD
 
 	mov al, [si]
 	shr al, 3
 	mov [sreg], al
 	call STR_SREG
+
 	jmp OP_END
 
 @@NOT_OP_POP3:
@@ -271,10 +276,7 @@ DISASSEMBLE:
 	mov [rm], al
 
 	lea dx, strop_pop
-	call STR_ADD
-
-	; lea dx, str_op_buffer
-	; call STR_ADD
+	call STR_BUF_ADD
 
 	jmp OP_END
 
@@ -291,7 +293,9 @@ DISASSEMBLE:
 	mov al, [si]
 	mov [reg], al
 	call STR_REG
+
 	jmp @@OP_END
+
 	; cmp al, 1
 	; jb @@NOT_OP_PUSH2
 
@@ -306,7 +310,7 @@ DISASSEMBLE:
 	jne @@NOT_OP_POP2
 
 	lea dx, strop_pop
-	call STR_ADD
+	call STR_BUF_ADD
 
 	mov al, [si]
 	mov [reg], al
@@ -334,16 +338,17 @@ DISASSEMBLE:
 
 	mov al, [si]
 	and al, 11000000b
+	shr al, 6
 	mov [mmod], al
 
 	mov al, [si]
 	and al, 00000111b
 	mov [rm], al
 
-	call MOD_RM
-
 	lea dx, strop_dec
-	call STR_ADD
+	call STR_BUF_ADD
+
+	call MOD_RM
 
 	jmp OP_END
 @@NOT_OP_DEC1:
@@ -355,7 +360,7 @@ DISASSEMBLE:
 	jne @@NOT_OP_DEC2
 
 	lea dx, strop_dec
-	call STR_ADD
+	call STR_BUF_ADD
 
 	mov al, [si]
 	mov [reg], al
@@ -365,10 +370,13 @@ DISASSEMBLE:
 
 @@NOT_OP_DEC2:
 	lea dx, strop_unreg
-	call STR_ADD
-
+	call STR_BUF_ADD
 
 OP_END:
+	lea dx, str_op_buffer
+	call STR_ADD
+	mov [str_op_buffer_offset], 0
+
 	; End line
 	mov byte ptr [di], 13
 	inc bytes_written
@@ -469,6 +477,39 @@ BYTE_TO_STR:
 
 	ret
 
+; Converts value inside dl and 
+; stores it inside str_op_buffer 
+BYTE_TO_STR_BUF:
+	push di
+	push ax
+
+	lea di, str_op_buffer
+	add di, [str_op_buffer_offset]
+	xor ax, ax
+	mov al, dl
+	mov cl, 16
+	div cl
+	; al = ax / cl
+	; ah = ax % cl
+
+	call TO_HEX
+	mov [di], al
+
+	mov al, ah
+	call TO_HEX
+
+	inc di
+	inc [str_op_buffer_offset]
+	mov [di], al
+
+	inc di
+	inc [str_op_buffer_offset]
+	mov [di], 0
+
+	pop ax
+	pop di
+	ret
+
 ; TO_HEX converts value inside al
 TO_HEX:
 	cmp al, 9
@@ -539,83 +580,6 @@ PRINT_OUTPUT:
 
 	ret
 
-; OPCODES
-STR_SREG:
-	mov al, [sreg]
-	and al, 00000011b
-	cmp al, 00000000b
-	jne @@STR_SREG_NOT_ES
-
-	lea dx, strsreg_es
-	call STR_ADD
-	ret
-
-@@STR_SREG_NOT_ES:
-	cmp al, 00000001b
-	jne @@STR_SREG_NOT_CS
-
-	lea dx, strsreg_cs
-	call STR_ADD
-	ret
-
-@@STR_SREG_NOT_CS:
-	cmp al, 00000010b
-	jne @@STR_SREG_NOT_SS
-
-	lea dx, strsreg_ss
-	call STR_ADD
-	ret
-@@STR_SREG_NOT_SS:
-	lea dx, strsreg_ds
-	call STR_ADD
-	ret
-; 00 – ES
-; 01 – CS
-; 10 – SS
-; 11 – DS
-
-STR_REG:
-	mov al, [reg]
-	and al, 00000111b
-	cmp al, reg_ax
-	jne @@STR_REG_NOT_AX
-
-	lea dx, strreg_ax
-	call STR_ADD
-	xor al, al
-	ret
-
-@@STR_REG_NOT_AX:
-	cmp al, reg_bx
-	jne @@STR_REG_NOT_BX
-
-	lea dx, strreg_bx
-	call STR_ADD
-	xor al, al
-	ret
-@@STR_REG_NOT_BX:
-	cmp al, reg_cx
-	jne @@STR_REG_NOT_CX
-
-	lea dx, strreg_cx
-	call STR_ADD
-	xor al, al
-	ret
-@@STR_REG_NOT_CX:
-	cmp al, reg_dx
-	jne @@STR_REG_NOT_DX
-
-	lea dx, strreg_dx
-	call STR_ADD
-	xor al, al
-	ret
-@@STR_REG_NOT_DX:
-	or al, 00000001b
-	ret
-
-SUB_OP_PUSH2:
-	ret
-
 ; --- String subroutines ---
 STR_ADD:
 	push si
@@ -642,9 +606,7 @@ STR_BUF_ADD:
 
 	mov si, dx
 	lea di, str_op_buffer
-
-	mov di, " "
-	inc di
+	add di, str_op_buffer_offset
 
 @@STR_BUF_LOOP:
 
@@ -653,78 +615,225 @@ STR_BUF_ADD:
 
 	inc di
 	inc si
+	inc [str_op_buffer_offset]
 
 	cmp byte ptr [si], 0
 	jne @@STR_BUF_LOOP
 
-	mov [di], 0
+	mov byte ptr [di], 0
 
 	pop di
 	pop si
 	ret
 
+; OPCODES
+STR_SREG:
+	mov al, [sreg]
+	and al, 00000011b
+	cmp al, 00000000b
+	jne @@STR_SREG_NOT_ES
+
+	lea dx, strsreg_es
+	call STR_BUF_ADD
+	ret
+
+@@STR_SREG_NOT_ES:
+	cmp al, 00000001b
+	jne @@STR_SREG_NOT_CS
+
+	lea dx, strsreg_cs
+	call STR_BUF_ADD
+	ret
+
+@@STR_SREG_NOT_CS:
+	cmp al, 00000010b
+	jne @@STR_SREG_NOT_SS
+
+	lea dx, strsreg_ss
+	call STR_BUF_ADD
+	ret
+@@STR_SREG_NOT_SS:
+	lea dx, strsreg_ds
+	call STR_BUF_ADD
+	ret
+; 00 – ES
+; 01 – CS
+; 10 – SS
+; 11 – DS
+
+STR_REG:
+	mov al, [reg]
+	and al, 00000111b
+	cmp al, reg_ax
+	jne @@STR_REG_NOT_AX
+
+	lea dx, strreg_ax
+	call STR_BUF_ADD
+	xor al, al
+	ret
+
+@@STR_REG_NOT_AX:
+	cmp al, reg_bx
+	jne @@STR_REG_NOT_BX
+
+	lea dx, strreg_bx
+	call STR_BUF_ADD
+	xor al, al
+	ret
+@@STR_REG_NOT_BX:
+	cmp al, reg_cx
+	jne @@STR_REG_NOT_CX
+
+	lea dx, strreg_cx
+	call STR_BUF_ADD
+	xor al, al
+	ret
+@@STR_REG_NOT_CX:
+	cmp al, reg_dx
+	jne @@STR_REG_NOT_DX
+
+	lea dx, strreg_dx
+	call STR_BUF_ADD
+	xor al, al
+	ret
+@@STR_REG_NOT_DX:
+	or al, 00000001b
+	ret
+
+SUB_OP_PUSH2:
+	ret
+
 ; --- OP CODE SUBROUTINES ---
 ; Detects which subroutine to call
 MOD_RM:
-	cmp [mmod], 00b
-	jne @@MOD_NOT00
-	call MOD00
+	mov al, [rm]
+	and al, 00000100b
+	cmp al, 00000000b
+	jne @@RM_NOT_0XX
+
+; rm = 0xx
+	cmp [mmod], 11b
+	jne @@MOD_NOT_11
+
+	call RM0XX_W
+	jmp @@MOD_RM_END
+
+@@MOD_NOT_11:
+	call RM0XX
+	jmp @@MOD_RM_END
+
+; r/m == 1xx
+@@RM_NOT_0XX:
+@@MOD_RM_END:
+
 	ret
 
-@@MOD_NOT00:
-	cmp [mmod], 01b
-	jne @@MOD_NOT01
-	call MOD01_10
-	ret
-
-@@MOD_NOT01:
-	cmp [mmod], 10b
-	jne @@MOD_NOT10
-	call MOD01_10
-	ret
-
-@@MOD_NOT10:
-	call MOD11
-
-	ret
-
-MOD00:
+; mod == 00 | 01 | 10
+RM0XX:
 	lea dx, str_sign_lbracket
 	call STR_BUF_ADD
 
 	cmp [rm], 000b
-	jne @@MOD00_RM_NOT_000
+	jne @@RM0XX_RM_NOT_000
 
-	jmp @@MOD00_END
+	lea dx, strreg_bx
+	call STR_BUF_ADD
 
-@@MOD00_RM_NOT_000:
-	cmp [rm], 100b
-	jne @@MOD00_RM_NOT_100
+	lea dx, str_sign_plus
+	call STR_BUF_ADD
 
 	lea dx, str_si
 	call STR_BUF_ADD
+	jmp RM0XX_MOD
 
-	jmp @@MOD00_END
+@@RM0XX_RM_NOT_000:
+	cmp [rm], 001b
+	jne @@RM0XX_RM_NOT_001
 
-@@MOD00_RM_NOT_100:
+	lea dx, strreg_bx
+	call STR_BUF_ADD
 
-	; mov 
-@@MOD00_END:
+	lea dx, str_sign_plus
+	call STR_BUF_ADD
+
+	lea dx, str_di
+	call STR_BUF_ADD
+	jmp RM0XX_MOD
+
+@@RM0XX_RM_NOT_001:
+	cmp [rm], 010b
+	jne @@RM0XX_RM_NOT_010
+
+	lea dx, str_bp
+	call STR_BUF_ADD
+
+	lea dx, str_sign_plus
+	call STR_BUF_ADD
+
+	lea dx, str_si
+	call STR_BUF_ADD
+	jmp RM0XX_MOD
+
+@@RM0XX_RM_NOT_010:
+	lea dx, str_bp
+	call STR_BUF_ADD
+
+	lea dx, str_sign_plus
+	call STR_BUF_ADD
+
+	lea dx, str_di
+	call STR_BUF_ADD
+	jmp RM0XX_MOD
+
+RM0XX_MOD:
+; No displacement
+	cmp [mmod], 00b 
+	je RM0XX_END
+
+	lea dx, str_sign_plus
+	call STR_BUF_ADD
+
+	cmp [mmod], 00000010b
+	je @@TWO_BYTES
+
+; One byte displacement
+	call GET_BYTE
+	mov dl, [si]
+	call BYTE_TO_STR_BUF
+
+	; lea dx, str_test
+	; call STR_BUF_ADD
+
+	; mov dl, [mmod]
+	; call BYTE_TO_STR_BUF
+
+	jmp RM0XX_END
+
+; Two byte displacement
+@@TWO_BYTES:
+	call GET_BYTE
+	mov al, [si]
+
+	call GET_BYTE
+	mov dl, [si]
+	call BYTE_TO_STR_BUF
+
+	mov dl, al
+	call BYTE_TO_STR_BUF
+
+RM0XX_END:
 	lea dx, str_sign_rbracket
 	call STR_BUF_ADD
-	ret
-
-MOD01_10:
-	ret
-
-MOD11:
-	cmp [w], 0b
-	jne @@W1
-
-	ret
-@@W1:
 
 	ret
 
+; mod == 11
+RM0XX_W:
+
+RM0XX_W_END:
+	lea dx, str_sign_rbracket
+	call STR_BUF_ADD
+
+	ret
 end START
 

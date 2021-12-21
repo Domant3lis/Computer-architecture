@@ -13,7 +13,11 @@ START:
 	DEC ax
 	DEC bx
 	DEC byte ptr [si]
+	DEC byte ptr [si + 20h]
+	DEC byte ptr [si + bx]
+	DEC byte ptr [si + bx + 20h]
 	DEC byte ptr [si + 1234h]
+	DEC byte [bp + si + 1234h]
 
 	AND ax, bx
 	AND al, bl
