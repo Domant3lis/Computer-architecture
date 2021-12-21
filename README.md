@@ -8,7 +8,7 @@ It only disassembles COM files
 
 ### List of opcodes implemented:
 
-### PUSH
+#### PUSH
 - [x] 2nd varaint
 
 #### POP
@@ -35,3 +35,6 @@ It only disassembles COM files
 #### LOOPE
 
 #### LOOPNE
+
+#### NOP
+- [x] Done
