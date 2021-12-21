@@ -23,18 +23,16 @@ It only disassembles COM files
 
 #### LEA
 
-#### LDS
-
 #### DEC
 - [x] 1st variant
 - [x] 2nd variant
 - [x] 3rd variant
 
-#### LOOP
+#### LOOPS
+- [x] LOOP
+- [x] LOOPE
+- [x] LOOPNE
 
-#### LOOPE
-
-#### LOOPNE
-
-#### NOP
-- [x] Done
+#### Other
+- [x] NOP
+- [x] LDS
