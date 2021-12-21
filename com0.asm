@@ -11,7 +11,10 @@ START:
 	mov bx, 31
 
 	DEC ax
-	DEC bx
+	DEC bl
+	inc di
+	DEC di
+	DEC byte ptr si
 	DEC byte ptr [si]
 	DEC byte ptr [si + 20h]
 	DEC byte ptr [si + bx]

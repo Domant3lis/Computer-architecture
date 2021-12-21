@@ -76,6 +76,16 @@ CAPACITY equ 20h
 	strreg_cx db "CX", 0
 	strreg_dx db "DX", 0
 
+	strreg_al db "AL", 0
+	strreg_bl db "BL", 0	
+	strreg_cl db "CL", 0
+	strreg_dl db "DL", 0
+
+	strreg_ah db "AH", 0
+	strreg_bh db "BH", 0	
+	strreg_ch db "CH", 0
+	strreg_dh db "DH", 0
+
 	strsreg_es db "ES", 0
 	strsreg_cs db "CS", 0
 	strsreg_ss db "SS", 0
@@ -250,6 +260,7 @@ DISASSEMBLE:
 	lea dx, strop_pop
 	call STR_BUF_ADD
 
+	mov [w], 1
 	mov al, [si]
 	shr al, 3
 	mov [sreg], al
@@ -291,16 +302,11 @@ DISASSEMBLE:
 	call STR_ADD
 
 	mov al, [si]
+	mov [w], 1
 	mov [reg], al
 	call STR_REG
 
-	jmp @@OP_END
-
-	; cmp al, 1
-	; jb @@NOT_OP_PUSH2
-
-	; sub di, 5
-	; sub bytes_written, 5
+	jmp OP_END
 
 @@NOT_OP_PUSH2:
 ; --- POP2 ---
@@ -313,16 +319,11 @@ DISASSEMBLE:
 	call STR_BUF_ADD
 
 	mov al, [si]
+	mov [w], 1
 	mov [reg], al
 	call STR_REG
-	jmp @@OP_END
+	jmp OP_END
 
-@@OP_END:
-	cmp al, 1
-	jb OP_END
-
-	sub di, 5
-	sub bytes_written, 5
 @@NOT_OP_POP2:
 ; --- DEC1 ---
 	mov al, [si]
@@ -363,6 +364,7 @@ DISASSEMBLE:
 	call STR_BUF_ADD
 
 	mov al, [si]
+	mov [w], 1
 	mov [reg], al
 	call STR_REG
 
@@ -664,40 +666,139 @@ STR_SREG:
 STR_REG:
 	mov al, [reg]
 	and al, 00000111b
-	cmp al, reg_ax
-	jne @@STR_REG_NOT_AX
 
+	cmp [w], 0
+	je @@STR_REG_W
+
+	; cmp al, 000b
+	; je @@STR_REG_AX
+
+	cmp al, 001b
+	je @@STR_REG_CX
+
+	cmp al, 010b
+	je @@STR_REG_DX
+
+	cmp al, 011b
+	je @@STR_REG_BX
+
+	cmp al, 100b
+	je @@STR_REG_SP
+
+	cmp al, 101b
+	je @@STR_REG_BP
+
+	cmp al, 110b
+	je @@STR_REG_SI
+
+	cmp al, 111b
+	je @@STR_REG_DI
+
+@@STR_REG_AX:
 	lea dx, strreg_ax
 	call STR_BUF_ADD
-	xor al, al
 	ret
 
-@@STR_REG_NOT_AX:
-	cmp al, reg_bx
-	jne @@STR_REG_NOT_BX
-
+@@STR_REG_BX:
 	lea dx, strreg_bx
 	call STR_BUF_ADD
-	xor al, al
 	ret
-@@STR_REG_NOT_BX:
-	cmp al, reg_cx
-	jne @@STR_REG_NOT_CX
-
+	
+@@STR_REG_CX:
 	lea dx, strreg_cx
 	call STR_BUF_ADD
-	xor al, al
 	ret
-@@STR_REG_NOT_CX:
-	cmp al, reg_dx
-	jne @@STR_REG_NOT_DX
 
+@@STR_REG_DX:
 	lea dx, strreg_dx
 	call STR_BUF_ADD
-	xor al, al
 	ret
-@@STR_REG_NOT_DX:
-	or al, 00000001b
+
+@@STR_REG_SP:
+	lea dx, str_sp
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_BP:
+	lea dx, str_bp
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_SI:
+	lea dx, str_si
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_DI:
+	lea dx, str_di
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_W:
+	; cmp al, 000b
+	; je @@STR_REG_AX
+
+	cmp al, 001b
+	je @@STR_REG_CL
+
+	cmp al, 010b
+	je @@STR_REG_DL
+
+	cmp al, 011b
+	je @@STR_REG_BL
+
+	cmp al, 100b
+	je @@STR_REG_AH
+
+	cmp al, 101b
+	je @@STR_REG_CH
+
+	cmp al, 110b
+	je @@STR_REG_DH
+
+	cmp al, 111b
+	je @@STR_REG_BH
+
+@@STR_REG_AX:
+	lea dx, strreg_ax
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_BX:
+	lea dx, strreg_bx
+	call STR_BUF_ADD
+	ret
+	
+@@STR_REG_CX:
+	lea dx, strreg_cx
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_DX:
+	lea dx, strreg_dx
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_SP:
+	lea dx, str_sp
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_BP:
+	lea dx, str_bp
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_SI:
+	lea dx, str_si
+	call STR_BUF_ADD
+	ret
+
+@@STR_REG_DI:
+	lea dx, str_di
+	call STR_BUF_ADD
+	ret
+@@STR_REG_W:
 	ret
 
 SUB_OP_PUSH2:
@@ -706,19 +807,156 @@ SUB_OP_PUSH2:
 ; --- OP CODE SUBROUTINES ---
 ; Detects which subroutine to call
 MOD_RM:
+; mod == 11
+	mov al, [mmod]
+	cmp al, 00000011b
+	je @@MOD_11
+
+	; lea dx, str_test
+	; call STR_BUF_ADD
+
+	; mov dl, al
+	; call BYTE_TO_STR_BUF
+
+	call MOD_NOT_11
+	ret
+
+@@MOD_11:
+	cmp [w], 0
+	jne @@MOD_RM_W1
+
+	; cmp [rm], 00000000b
+	; je @@MOD_RM_W0_000
+
+	cmp [rm], 00000001b
+	je @@MOD_RM_W0_001
+
+	cmp [rm], 00000010b
+	je @@MOD_RM_W0_010
+
+	cmp [rm], 00000011b
+	je @@MOD_RM_W0_011
+
+	cmp [rm], 00000100b
+	je @@MOD_RM_W0_100
+
+	cmp [rm], 00000101b
+	je @@MOD_RM_W0_101
+
+	cmp [rm], 00000110b
+	je @@MOD_RM_W0_110
+
+	cmp [rm], 00000111b
+	je @@MOD_RM_W0_111
+
+; w = 0
+@@MOD_RM_W0_000:
+	lea dx, strreg_al
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_001:
+	lea dx, strreg_cl
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_010:
+	lea dx, strreg_dl
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_011:
+	lea dx, strreg_bl
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_100:
+	lea dx, strreg_ah
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_101:
+	lea dx, strreg_ch
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_110:
+	lea dx, strreg_dh
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W0_111:
+	lea dx, strreg_bh
+	call STR_BUF_ADD
+	ret 
+
+; w = 1
+@@MOD_RM_W1:
+	; cmp [rm], 00000000b
+	; je @@MOD_RM_W1_000
+
+	cmp [rm], 00000001b
+	je @@MOD_RM_W1_001
+
+	cmp [rm], 00000010b
+	je @@MOD_RM_W1_010
+
+	cmp [rm], 00000011b
+	je @@MOD_RM_W1_011
+
+	cmp [rm], 00000100b
+	je @@MOD_RM_W1_100
+
+	cmp [rm], 00000101b
+	je @@MOD_RM_W1_101
+
+	cmp [rm], 00000110b
+	je @@MOD_RM_W1_110
+
+	cmp [rm], 00000111b
+	je @@MOD_RM_W1_111
+
+; w = 0
+@@MOD_RM_W1_000:
+	lea dx, strreg_ax
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_001:
+	lea dx, strreg_cx
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_010:
+	lea dx, strreg_dx
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_011:
+	lea dx, strreg_bx
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_100:
+	lea dx, str_sp
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_101:
+	lea dx, str_bp
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_110:
+	lea dx, str_si
+	call STR_BUF_ADD
+	ret 
+@@MOD_RM_W1_111:
+	lea dx, str_di
+	call STR_BUF_ADD
+	ret 
+
+MOD_NOT_11:
+; rm == 0xx
 	mov al, [rm]
 	and al, 00000100b
 	cmp al, 00000000b
 	jne @@RM_NOT_0XX
 
-; rm = 0xx
 	cmp [mmod], 11b
-	jne @@MOD_NOT_11
+	jne @@RM0XX_MOD_NOT_11
 
 	call RM0XX_W
 	jmp @@MOD_RM_END
 
-@@MOD_NOT_11:
+@@RM0XX_MOD_NOT_11:
 	call RM0XX
 	jmp @@MOD_RM_END
 
