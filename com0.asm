@@ -57,8 +57,8 @@ START:
 	LOOPNE @@LOOPNE
 
 	LDS di, double
-	; si = 0102
-	; ds = 0304
+	LDS di, [bx + 10h]
+	LDS di, [bx + 1020h]
 
 	POP dx
 	POP cx
@@ -94,7 +94,7 @@ START:
 ; --- DATA ---
 	string db "This is some text", 10, 13, "$"
 	endl db 10, 13, "$"
-	double dd 01020304h
+	double dd 12345678h
 	foo dw 0FFFFh
 	bar db 0FFh
 end START

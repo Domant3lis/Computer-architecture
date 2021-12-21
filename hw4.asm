@@ -374,18 +374,13 @@ JUMP0:
 	cmp al, 01001000b
 	je @@OP_DEC2
 
-	mov al, [si]
-	cmp al, 10001101b
-	je @@OP_LEA
+	; mov al, [si]
+	; cmp al, 10001101b
+	; je @@OP_LEA
 
 	mov al, [si]
 	cmp al, 90h
 	je @@OP_NOP
-
-	; Must be the last
-	and al, 00100000b
-	cmp al, 00100000b
-	je @@OP_AND1
 
 	jmp JUMP1
 
@@ -397,12 +392,6 @@ JUMP0:
 	mov [w], 1
 	mov [reg], al
 	call STR_REG
-
-	jmp OP_END
-
-@@OP_LEA:
-
-	; TODO
 
 	jmp OP_END
 
@@ -459,6 +448,48 @@ JUMP0:
 	call BYTE_TO_STR_BUF
 	jmp OP_END
 
+JUMP1:
+
+	mov al, [si]
+	; cmp al, c6
+	cmp al, 11000101b
+	je @@OP_LDS
+
+	; Must be the last
+	and al, 00100000b
+	cmp al, 00100000b
+	je @@OP_AND1
+
+	jmp JUMP2
+
+@@OP_LDS:
+	lea dx, strop_lds
+	call STR_BUF_ADD
+
+	call GET_BYTE
+
+	mov w, 1
+
+	mov al, [si]
+	and al, 11000000b
+	shr al, 6
+	mov [mmod], al
+
+	mov al, [si]
+	and al, 00111000b
+	shr al, 3
+	call STR_REG
+
+	lea dx, str_sep
+	call STR_BUF_ADD
+	
+	mov al, [si]
+	and al, 00000111b
+	mov [rm], al
+	call MOD_RM
+
+	jmp OP_END
+
 @@OP_AND1:
 	; lea dx, strop_and
 	; call STR_BUF_ADD
@@ -496,7 +527,7 @@ JUMP0:
 	; call STR_REG
 	; jmp OP_END
 
-JUMP1:
+JUMP2:
 
 ; No op found
 	lea dx, strop_unreg
@@ -650,10 +681,7 @@ TO_HEX:
 	ret
 
 GET_BYTE:
-	mov dx, [bytes_read]
 
-	; mov dx, [bytes_scanned]
-	; cmp [bytes_read], dx
 	mov dx, [bytes_scanned]
 	inc dx
 	cmp dx, [bytes_read]
@@ -1016,9 +1044,18 @@ MOD_NOT_11:
 	jmp _MOD
 
 @@RM110:
-	lea dx, str_bp
-	call STR_BUF_ADD
-	jmp _MOD
+	call GET_BYTE
+	mov al, [si]
+	push ax
+
+	call GET_BYTE
+	mov dl, [si]
+	call BYTE_TO_STR_BUF
+	pop ax
+	
+	mov dl, al
+	call BYTE_TO_STR_BUF
+	jmp @@RM0XX_END
 
 @@RM111:
 	lea dx, strreg_bx
@@ -1047,11 +1084,13 @@ _MOD:
 @@TWO_BYTES:
 	call GET_BYTE
 	mov al, [si]
+	push ax
 
 	call GET_BYTE
 	mov dl, [si]
 	call BYTE_TO_STR_BUF
-
+	pop ax
+	
 	mov dl, al
 	call BYTE_TO_STR_BUF
 	jmp @@RM0XX_END
