@@ -41,6 +41,7 @@ CAPACITY equ 20h
 	pos dw 0100h
 
 	; Opcode strings
+	strop_mov db " MOV ", 0
 	strop_nop db " NOP ", 0
 	strop_push db   " PUSH ", 0
 	strop_pop db    " POP ", 0
@@ -639,6 +640,11 @@ JUMP3:
 	cmp al, 00100101b
 	je @@OP_AND3
 
+	mov al, [si]
+	or al, 00001111b ; 1011 w reg
+	cmp al, 10111111b
+	je @@OP_MOV3
+
 	jmp JUMP4
 
 @@OP_AND3:
@@ -669,6 +675,17 @@ JUMP3:
 	
 	mov dl, al
 	call BYTE_TO_STR_BUF
+
+	jmp OP_END
+
+@@OP_MOV3:
+	lea dx, strop_mov
+	call STR_BUF_ADD
+
+	; mov al, [si]
+	; and al, 00001000b
+	; shr al, 3
+	; mov [w], al
 
 	jmp OP_END
 

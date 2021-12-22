@@ -1,3 +1,10 @@
+;  POP, AND, DEC
+;  LOOP, LOOPE, LOOPNE, LDS
+;  LEA
+
+;  NOP
+;  PUSH (only 2nd var.)
+
 .model tiny
 .code
 org 0100h
@@ -11,6 +18,8 @@ START:
 	mov bx, 31
 
 	DEC ax
+	DEC dx
+	DEC ds:bx
 	DEC bl
 	inc di
 	DEC di
@@ -22,15 +31,14 @@ START:
 	DEC byte ptr [si + bx]
 	DEC byte ptr [si + bx + 20h]
 	DEC byte ptr [si + bx + 0AA21h]
-	DEC byte [bp + si + 1234h]
+	DEC byte ptr [bp + si + 1234h]
 
 	mov ah, 0Ah
 	DEC ah
 	DEC bh
 	DEC ch
 	DEC dh
-	LEA di, endl
-	LEA si, string
+	lea dx, [bx + 1000h]
 	int 21h
 	
 	mov cx, 5
@@ -71,11 +79,8 @@ START:
 	POP cx
 	POP bx
 	POP cs:bx
-
 	POP es:[bx + 1111h]
-	
 	POP ss:bx
-
 	POP ds
 	POP es
 
@@ -91,10 +96,13 @@ START:
 
 	AND ax, bx
 	AND bx, ax
+
 	AND ax, si
 	AND si, ax
+
 	AND di, si
 	AND ax, bx
+	
 	AND al, bl
 	AND cl, dl
 
