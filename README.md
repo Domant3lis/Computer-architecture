@@ -21,8 +21,6 @@ It only disassembles COM files
 - [ ] 2nd variant
 - [ ] 3rd variant
 
-#### LEA
-
 #### DEC
 - [x] 1st variant
 - [x] 2nd variant
@@ -36,3 +34,4 @@ It only disassembles COM files
 #### Other
 - [x] NOP
 - [x] LDS
+- [x] LEA
