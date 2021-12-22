@@ -12,7 +12,7 @@ It only disassembles COM files
 - [x] 2nd varaint
 
 #### POP
-- [ ] 1st variant
+- [x] 1st variant
 - [x] 2nd variant
 - [x] 3rd variant
  
