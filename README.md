@@ -17,9 +17,9 @@ It only disassembles COM files
 - [x] 3rd variant
  
 #### AND
-- [ ] 1st variant
-- [ ] 2nd variant
-- [ ] 3rd variant
+- [X] 1st variant
+- [x] 2nd variant
+- [x] 3rd variant
 
 #### DEC
 - [x] 1st variant
