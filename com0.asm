@@ -14,7 +14,7 @@ START:
 	DEC bl
 	inc di
 	DEC di
-	DEC [bp + 10h]
+	DEC [bp + 1000h]
 	DEC [bp]
 	DEC byte ptr [si]
 	DEC byte ptr [di + 20h]
@@ -26,8 +26,11 @@ START:
 
 	mov ah, 0Ah
 	DEC ah
-	LEA dx, endl
-	LEA dx, string
+	DEC bh
+	DEC ch
+	DEC dh
+	LEA di, endl
+	LEA si, string
 	int 21h
 	
 	mov cx, 5
@@ -35,6 +38,8 @@ START:
 	mov ah, 02h
 	mov dl, "#"
 	int 21h
+	inc di
+	inc si
 
 	LOOP @@LOOP
 
@@ -58,13 +63,16 @@ START:
 
 	LDS di, double
 	LDS di, [bx + 10h]
-	LDS di, [bx + 1020h]
+	NOP
+	LDS di, es:[bx + 10h]
+	LDS si, [bx + 1020h]
 
 	POP dx
 	POP cx
 	POP bx
+	POP cs:bx
 
-	POP ds:[bx + 1111h]
+	POP es:[bx + 1111h]
 	
 	POP ss:bx
 
@@ -73,17 +81,26 @@ START:
 
 	nop
 
+	AND es:bx, 1000h
+	AND cx, 0BBBBh
+	AND bl, 0BBh
+
+	; AND 1000h
+
+	nop
+
 	AND ax, bx
 	AND bx, ax
 	AND ax, si
 	AND si, ax
 	AND di, si
-
 	AND ax, bx
 	AND al, bl
 	AND cl, dl
+
 	AND ax, [bx + 10h]
-	AND ax, [bx + 1234h]
+	AND [bx + 10h], bx
+	AND cx, [bx + 1234h]
 
 	AND cx, [foo]
 	AND cl, [bar]
