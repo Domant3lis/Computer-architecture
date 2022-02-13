@@ -3,14 +3,23 @@ All programs are written for x86 DOS machines using Turbo Assembler and DosBox.
 
 There is a handy little script `run.bat` which builds and runs a specified program.
 
+## HW1_*
+Simple example programs
+
 ## HW2
 Creates a MD2 chesksum of a specified file
+
+❗️ Doesn't provide a way to update checksum i.e. it reads the whole file into memory, might run out of memory 
 
 ## HW3
 Provides hex output of a given file 
 
 ## HW4 - a partial disassembler
-It only disassembles COM files
+Only disassembles COM files
+
+Example program for disassembly `com0.asm`
+
+`runcom.bat` - a simple script to build `.asm` files into `.com` executables and run them
 
 ### List of opcodes implemented:
 
